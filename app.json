@@ -1,0 +1,11 @@
+{
+  "name": "fitness-buddy",
+  "description": "IBM Granite AI powered health and fitness coach",
+  "version": "1.0.0",
+  "main_entry": "streamlit_app.py",
+  "flask_entry": "app.py",
+  "python_version": "3.9+",
+  "ibm_service": "watsonx.ai",
+  "model": "ibm/granite-3-8b-instruct",
+  "features": ["ai_chat","workout_planner","meal_planner","habit_tracker","progress_dashboard","motivation"]
+}

@@ -1,0 +1,86 @@
+# =============================================================
+#  Fitness Buddy -- .gitignore
+#  Safe for public GitHub. NEVER commit secrets or credentials.
+# =============================================================
+
+# -- Credentials & Secrets (NEVER commit these) ---------------
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+secrets/
+credentials/
+
+# -- Python runtime artefacts ---------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# -- Virtual environments -------------------------------------
+venv/
+.venv/
+env/
+ENV/
+virtualenv/
+.virtualenv/
+Pipfile.lock
+
+# -- Distribution / packaging ---------------------------------
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+MANIFEST
+
+# -- Testing & coverage ---------------------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+nosetests.xml
+*.log
+
+# -- Databases & user data (never upload personal data) -------
+*.db
+*.sqlite
+*.sqlite3
+instance/
+user_data/
+data/
+chat_history/
+*.json.bak
+
+# -- IDEs & editors -------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# -- Jupyter / IPython ----------------------------------------
+.ipynb_checkpoints/
+*.ipynb
+
+# -- Streamlit local secrets ----------------------------------
+.streamlit/secrets.toml
+
+# -- OS generated ---------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitness Buddy — AI Health Coach</title>
+  <style>
+    /* ── Reset & Base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary:    #2563eb;
+      --primary-dk: #1d4ed8;
+      --accent:     #10b981;
+      --accent-dk:  #059669;
+      --danger:     #ef4444;
+      --bg:         #f0f4ff;
+      --surface:    #ffffff;
+      --surface2:   #f8fafc;
+      --border:     #e2e8f0;
+      --text:       #1e293b;
+      --muted:      #64748b;
+      --user-bg:    #2563eb;
+      --user-text:  #ffffff;
+      --bot-bg:     #ffffff;
+      --radius:     14px;
+      --shadow:     0 4px 24px rgba(37,99,235,.10);
+    }
+    body {
+      font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    header {
+      background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #0ea5e9 100%);
+      color: #fff;
+      padding: 0 1.5rem;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 12px rgba(30,64,175,.3);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: .65rem; }
+    .logo-icon {
+      width: 38px; height: 38px; background: rgba(255,255,255,.2);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    .logo-text h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; }
+    .logo-text p  { font-size: .7rem; opacity: .8; }
+    .ibm-badge {
+      font-size: .65rem; padding: .25rem .65rem;
+      background: rgba(255,255,255,.18); border-radius: 20px;
+      border: 1px solid rgba(255,255,255,.3); letter-spacing: .03em;
+      font-weight: 600;
+    }
+    #status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #fbbf24; display: inline-block;
+      margin-right: 6px; animation: pulse 2s infinite;
+    }
+    #status-dot.online { background: #10b981; animation: none; }
+    @keyframes pulse {
+      0%,100%{opacity:1}50%{opacity:.4}
+    }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .container {
+      max-width: 900px; width: 100%; margin: 0 auto;
+      padding: 1.5rem 1rem; flex: 1;
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+
+    /* ── Quick Actions ───────────────────────────────────────── */
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: .65rem;
+    }
+    .qa-btn {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      cursor: pointer;
+      transition: all .2s;
+      text-align: left;
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .82rem; font-weight: 600; color: var(--text);
+    }
+    .qa-btn:hover {
+      border-color: var(--primary);
+      background: #eff6ff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37,99,235,.12);
+    }
+    .qa-btn .btn-icon { font-size: 1.2rem; }
+    .qa-btn .btn-label { line-height: 1.2; }
+    .qa-btn .btn-sub { font-size: .7rem; color: var(--muted); font-weight: 400; display: block; }
+
+    /* ── Chat Window ─────────────────────────────────────────── */
+    .chat-wrapper {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex; flex-direction: column;
+      height: 480px;
+      overflow: hidden;
+    }
+    .chat-header {
+      padding: .75rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .82rem; color: var(--muted); font-weight: 500;
+    }
+    #messages {
+      flex: 1; overflow-y: auto; padding: 1rem 1.25rem;
+      display: flex; flex-direction: column; gap: .75rem;
+      scroll-behavior: smooth;
+    }
+    #messages::-webkit-scrollbar { width: 5px; }
+    #messages::-webkit-scrollbar-track { background: transparent; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+    /* ── Messages ────────────────────────────────────────────── */
+    .msg { display: flex; gap: .6rem; max-width: 88%; animation: fadeUp .25s ease; }
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(8px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+    .msg.bot  { align-self: flex-start; }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .95rem; flex-shrink: 0;
+    }
+    .msg.bot  .avatar { background: #eff6ff; border: 1.5px solid #bfdbfe; }
+    .msg.user .avatar { background: var(--primary); color: #fff; }
+    .bubble {
+      padding: .65rem 1rem;
+      border-radius: 14px;
+      font-size: .875rem; line-height: 1.6;
+      word-break: break-word;
+    }
+    .msg.user .bubble {
+      background: var(--user-bg);
+      color: var(--user-text);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot .bubble {
+      background: var(--bot-bg);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .bubble table {
+      border-collapse: collapse; width: 100%; font-size: .8rem; margin: .5rem 0;
+    }
+    .bubble th, .bubble td {
+      border: 1px solid var(--border); padding: .3rem .5rem; text-align: left;
+    }
+    .bubble th { background: #eff6ff; font-weight: 600; }
+    .bubble strong { color: var(--primary-dk); }
+    .bubble em { color: var(--muted); }
+    .bubble code { background: #f1f5f9; padding: .1rem .3rem; border-radius: 4px; font-size: .8rem; }
+    .msg-time {
+      font-size: .65rem; color: var(--muted); margin-top: .2rem;
+      padding: 0 .3rem;
+    }
+
+    /* ── Typing indicator ────────────────────────────────────── */
+    .typing .bubble { padding: .75rem 1.1rem; }
+    .typing-dots { display: flex; gap: 4px; }
+    .typing-dots span {
+      width: 7px; height: 7px; background: var(--muted);
+      border-radius: 50%; animation: bounce .8s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: .15s; }
+    .typing-dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce {
+      0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)}
+    }
+
+    /* ── Input area ──────────────────────────────────────────── */
+    .input-area {
+      border-top: 1px solid var(--border);
+      padding: .75rem 1rem;
+      display: flex; gap: .6rem; align-items: flex-end;
+      background: var(--surface2);
+    }
+    #user-input {
+      flex: 1; resize: none;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      padding: .6rem .9rem; font-size: .875rem; line-height: 1.5;
+      font-family: inherit; background: var(--surface); color: var(--text);
+      max-height: 120px; min-height: 40px;
+      transition: border-color .2s;
+    }
+    #user-input:focus { outline: none; border-color: var(--primary); }
+    #send-btn {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--primary); color: #fff; border: none;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background .2s; flex-shrink: 0;
+    }
+    #send-btn:hover { background: var(--primary-dk); }
+    #send-btn:disabled { background: var(--muted); cursor: not-allowed; }
+    #send-btn svg { width:18px; height:18px; fill:currentColor; }
+
+    /* ── Workout/Meal panel ──────────────────────────────────── */
+    .panel-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+    }
+    @media (max-width: 600px) { .panel-grid { grid-template-columns: 1fr; } }
+    .panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.25rem;
+      box-shadow: var(--shadow);
+    }
+    .panel h3 { font-size: .95rem; margin-bottom: .75rem; display: flex; align-items: center; gap: .4rem; }
+    .panel select, .panel button.primary-btn {
+      width: 100%; padding: .5rem .75rem;
+      border-radius: 8px; border: 1.5px solid var(--border);
+      font-size: .82rem; font-family: inherit; margin-bottom: .5rem;
+    }
+    .panel select { background: var(--surface); color: var(--text); }
+    .panel button.primary-btn {
+      background: var(--primary); color: #fff; border-color: transparent;
+      cursor: pointer; font-weight: 600; transition: background .2s;
+    }
+    .panel button.primary-btn:hover { background: var(--primary-dk); }
+    .panel button.accent-btn {
+      width: 100%; padding: .5rem .75rem;
+      border-radius: 8px; background: var(--accent); color: #fff;
+      border: none; font-size: .82rem; font-weight: 600;
+      cursor: pointer; transition: background .2s; margin-bottom: .5rem; font-family: inherit;
+    }
+    .panel button.accent-btn:hover { background: var(--accent-dk); }
+
+    /* ── Footer ──────────────────────────────────────────────── */
+    footer {
+      text-align: center; padding: 1rem;
+      font-size: .72rem; color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+    }
+    footer a { color: var(--primary); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ─────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏋️</div>
+    <div class="logo-text">
+      <h1>Fitness Buddy</h1>
+      <p>Your AI-Powered Health Coach</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <span style="font-size:.75rem;opacity:.85">
+      <span id="status-dot"></span><span id="status-text">Connecting…</span>
+    </span>
+    <span class="ibm-badge">🔵 IBM Granite</span>
+  </div>
+</header>
+
+<!-- ── Main ───────────────────────────────────────────────────────────── -->
+<div class="container">
+
+  <!-- Quick Actions -->
+  <div class="quick-actions">
+    <button class="qa-btn" onclick="quickAction('workout')">
+      <span class="btn-icon">🏋️</span>
+      <span class="btn-label">Workouts<span class="btn-sub">Home exercise plans</span></span>
+    </button>
+    <button class="qa-btn" onclick="quickAction('nutrition')">
+      <span class="btn-icon">🥗</span>
+      <span class="btn-label">Meal Ideas<span class="btn-sub">Healthy eating tips</span></span>
+    </button>
+    <button class="qa-btn" onclick="quickAction('motivate')">
+      <span class="btn-icon">💪</span>
+      <span class="btn-label">Motivate Me<span class="btn-sub">Daily inspiration</span></span>
+    </button>
+    <button class="qa-btn" onclick="quickAction('wellness')">
+      <span class="btn-icon">🧘</span>
+      <span class="btn-label">Wellness Tip<span class="btn-sub">Sleep, stress & more</span></span>
+    </button>
+    <button class="qa-btn" onclick="quickAction('habit')">
+      <span class="btn-icon">📅</span>
+      <span class="btn-label">Build Habits<span class="btn-sub">Consistency strategies</span></span>
+    </button>
+    <button class="qa-btn" onclick="quickAction('water')">
+      <span class="btn-icon">💧</span>
+      <span class="btn-label">Hydration<span class="btn-sub">Water & recovery tips</span></span>
+    </button>
+  </div>
+
+  <!-- Chat Window -->
+  <div class="chat-wrapper">
+    <div class="chat-header">
+      <span>💬</span>
+      <span>Chat with Fitness Buddy</span>
+      <span style="margin-left:auto;font-size:.7rem">Powered by IBM Granite (watsonx.ai)</span>
+    </div>
+    <div id="messages">
+      <!-- Welcome message injected by JS -->
+    </div>
+    <div class="input-area">
+      <textarea id="user-input" rows="1"
+        placeholder="Ask me anything about fitness, nutrition, or wellness…"
+        onkeydown="handleKey(event)"></textarea>
+      <button id="send-btn" onclick="sendMessage()" title="Send">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Workout & Meal Planner Panels -->
+  <div class="panel-grid">
+    <!-- Workout Planner -->
+    <div class="panel">
+      <h3>🏋️ Workout Planner</h3>
+      <select id="workout-level">
+        <option value="beginner">Beginner</option>
+        <option value="intermediate">Intermediate</option>
+        <option value="advanced">Advanced</option>
+      </select>
+      <select id="workout-goal">
+        <option value="general_fitness">General Fitness</option>
+        <option value="weight_loss">Weight Loss</option>
+        <option value="muscle_gain">Muscle Gain</option>
+        <option value="flexibility">Flexibility</option>
+      </select>
+      <button class="primary-btn" onclick="getWorkoutPlan()">Generate Workout Plan 🏃</button>
+    </div>
+
+    <!-- Meal Planner -->
+    <div class="panel">
+      <h3>🥗 Meal Planner</h3>
+      <select id="meal-goal">
+        <option value="general_health">General Health</option>
+        <option value="weight_loss">Weight Loss</option>
+        <option value="muscle_gain">Muscle Gain</option>
+      </select>
+      <button class="primary-btn" onclick="getMealPlan()">Get Meal Suggestions 🍽️</button>
+      <button class="accent-btn" onclick="getMotivation()">Daily Motivation 💪</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────────────────── -->
+<footer>
+  🏋️ Fitness Buddy &nbsp;·&nbsp; Powered by
+  <a href="https://www.ibm.com/products/watsonx-ai" target="_blank">IBM watsonx.ai (Granite)</a>
+  &nbsp;·&nbsp; Built for IBM Cloud Lite &nbsp;·&nbsp; 2024
+</footer>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────
+  let conversationHistory = [];
+  let isTyping = false;
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  function timeStr() {
+    return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // Very light markdown → HTML renderer
+  function renderMarkdown(text) {
+    return text
+      // Tables
+      .replace(/\|(.+)\|\n\|[-| :]+\|\n((?:\|.+\|\n?)+)/g, (_, header, rows) => {
+        const ths = header.split('|').filter(c=>c.trim()).map(c=>`<th>${c.trim()}</th>`).join('');
+        const trs = rows.trim().split('\n').map(row => {
+          const tds = row.split('|').filter(c=>c.trim()).map(c=>`<td>${c.trim()}</td>`).join('');
+          return `<tr>${tds}</tr>`;
+        }).join('');
+        return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+      })
+      // Bold
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      // Italic
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      // Inline code
+      .replace(/`(.+?)`/g, '<code>$1</code>')
+      // Bullet list
+      .replace(/^[•\-]\s(.+)$/gm, '<li>$1</li>')
+      .replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>')
+      // Numbered list
+      .replace(/^\d+\.\s(.+)$/gm, '<li>$1</li>')
+      // Line breaks
+      .replace(/\n\n/g, '<br><br>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function appendMessage(role, content) {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    const avatar = role === 'user' ? '👤' : '🤖';
+    div.innerHTML = `
+      <div class="avatar">${avatar}</div>
+      <div>
+        <div class="bubble">${role === 'user' ? escapeHtml(content) : renderMarkdown(content)}</div>
+        <div class="msg-time">${timeStr()}</div>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function showTyping() {
+    const msgs = document.getElementById('messages');
+    const div = document.createElement('div');
+    div.id = 'typing-indicator';
+    div.className = 'msg bot typing';
+    div.innerHTML = `
+      <div class="avatar">🤖</div>
+      <div class="bubble">
+        <div class="typing-dots"><span></span><span></span><span></span></div>
+      </div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  function hideTyping() {
+    const el = document.getElementById('typing-indicator');
+    if (el) el.remove();
+  }
+
+  // ── API calls ──────────────────────────────────────────────────────────
+  async function sendMessage() {
+    const input = document.getElementById('user-input');
+    const text = input.value.trim();
+    if (!text || isTyping) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    appendMessage('user', text);
+    conversationHistory.push({role:'user', content: text});
+
+    isTyping = true;
+    document.getElementById('send-btn').disabled = true;
+    showTyping();
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({message: text, history: conversationHistory.slice(-10)})
+      });
+      const data = await res.json();
+      hideTyping();
+      appendMessage('bot', data.response || data.error || 'Sorry, something went wrong.');
+      conversationHistory.push({role:'assistant', content: data.response || ''});
+    } catch (e) {
+      hideTyping();
+      appendMessage('bot', '⚠️ Network error. Please try again.');
+    } finally {
+      isTyping = false;
+      document.getElementById('send-btn').disabled = false;
+      input.focus();
+    }
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    // Auto-resize textarea
+    const ta = document.getElementById('user-input');
+    setTimeout(() => { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }, 0);
+  }
+
+  async function getWorkoutPlan() {
+    const level = document.getElementById('workout-level').value;
+    const goal  = document.getElementById('workout-goal').value;
+    appendMessage('user', `Show me a ${level} workout plan for ${goal.replace('_',' ')}`);
+    showTyping();
+    try {
+      const res = await fetch('/api/workout', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({level, goal})
+      });
+      const data = await res.json();
+      hideTyping();
+      appendMessage('bot', data.plan);
+    } catch(e) {
+      hideTyping();
+      appendMessage('bot', '⚠️ Could not load workout plan. Please try again.');
+    }
+  }
+
+  async function getMealPlan() {
+    const goal = document.getElementById('meal-goal').value;
+    appendMessage('user', `Give me a meal plan for ${goal.replace('_',' ')}`);
+    showTyping();
+    try {
+      const res = await fetch('/api/meal', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({goal})
+      });
+      const data = await res.json();
+      hideTyping();
+      appendMessage('bot', data.plan);
+    } catch(e) {
+      hideTyping();
+      appendMessage('bot', '⚠️ Could not load meal plan. Please try again.');
+    }
+  }
+
+  async function getMotivation() {
+    appendMessage('user', 'Give me my daily motivation! 💪');
+    showTyping();
+    try {
+      const res = await fetch('/api/motivate');
+      const data = await res.json();
+      hideTyping();
+      appendMessage('bot', data.message);
+    } catch(e) {
+      hideTyping();
+      appendMessage('bot', '⚠️ Could not load motivation. Please try again.');
+    }
+  }
+
+  // Quick action buttons → chat prefills
+  const QUICK_PROMPTS = {
+    workout:   "I want to start working out at home. Can you help me create a plan?",
+    nutrition: "What are some healthy meal ideas for someone trying to eat better?",
+    motivate:  "I'm feeling unmotivated today. Can you give me some fitness inspiration?",
+    wellness:  "Give me a wellness tip for today.",
+    habit:     "How can I build a consistent fitness habit that actually sticks?",
+    water:     "What are the best tips for staying hydrated during workouts?"
+  };
+
+  function quickAction(type) {
+    const input = document.getElementById('user-input');
+    input.value = QUICK_PROMPTS[type] || '';
+    input.focus();
+    // Auto-resize
+    setTimeout(() => { input.style.height = 'auto'; input.style.height = input.scrollHeight + 'px'; }, 0);
+  }
+
+  // ── Status check ───────────────────────────────────────────────────────
+  async function checkStatus() {
+    try {
+      const res = await fetch('/api/health');
+      const data = await res.json();
+      const dot  = document.getElementById('status-dot');
+      const txt  = document.getElementById('status-text');
+      if (data.ibm_granite_configured) {
+        dot.className = 'online';
+        txt.textContent = 'IBM Granite Connected';
+      } else {
+        txt.textContent = 'Smart Fallback Mode';
+      }
+    } catch(e) {
+      document.getElementById('status-text').textContent = 'Offline';
+    }
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    appendMessage('bot',
+      "👋 Hi! I'm **Fitness Buddy**, your AI-powered health and fitness coach!\n\n" +
+      "I'm here to help you with:\n" +
+      "🏋️ **Workout plans** tailored to your fitness level\n" +
+      "🥗 **Nutritious meal ideas** for your goals\n" +
+      "💪 **Daily motivation** and habit-building strategies\n" +
+      "🧘 **Wellness tips** for a balanced lifestyle\n\n" +
+      "Use the **quick-action buttons** above or just ask me anything. Let's get started! 🚀"
+    );
+    checkStatus();
+  });
+</script>
+</body>
+</html>
